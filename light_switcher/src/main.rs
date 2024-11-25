@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
+#![feature(abi_avr_interrupt)]
 
+mod timer;
 use panic_halt as _;
 
 #[arduino_hal::entry]
@@ -8,10 +10,15 @@ fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
-    let sound_sensor_input = pins.d7.into_floating_input();
+
+    // Initialize the TC0 device to count milliseconds
+    timer::millis_init(dp.TC0);
+
+    // Enable interrupts globally
+    unsafe { avr_device::interrupt::enable() };
 
     loop {
-        ufmt::uwriteln!(&mut serial, "Clap heard: {:?}\r", sound_sensor_input.is_high()).unwrap();
-        arduino_hal::delay_us(1000);
+       ufmt::uwriteln!(&mut serial, "Millis since start: {:?}\r", timer::millis()).unwrap();
+       arduino_hal::delay_ms(1000);
     }
 }
